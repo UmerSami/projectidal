@@ -2,7 +2,6 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Text;
     using System.Text.RegularExpressions;
     using OrderDynamics.Core.BusinessFacade;
     using OrderDynamics.Core.BusinessLogic;
@@ -28,9 +27,9 @@
         /// <summary>
         /// Inventory location IDs member
         /// </summary>
-        [OrderRoutingActionUIHint(OrderRoutingActionUIHintType.InventoryLocations)]
+        [OrderRoutingActionUIHint(OrderRoutingActionUIHintType.InventoryLocationIds)]
         [OrderRoutingActionProperty]
-        [OrderRoutingActionUIName("Inventory Locations")]
+        [OrderRoutingActionUIName("Inventory Location Ids")]
         public string InventoryLocations {
             get; set;
         }
@@ -51,8 +50,8 @@
             set;
         }
 
-        public override IOrderRoutingActionResult Execute(OrderInfo orderInfo, OrderDetails orderDetails) {
-            var locations = _inventortyLocationsParser.ParseByName(InventoryLocations).ToArray();
+        protected override IOrderRoutingActionResult CreateActionResult(OrderInfo orderInfo, OrderDetails orderDetails) {
+            var locations = _inventortyLocationsParser.ParseById(InventoryLocations).ToArray();
 
             if (!locations.Any()) {
                 return new OrderRoutingActionResult {
@@ -109,6 +108,18 @@
             }
 
             return actionResult;
+        }
+
+        protected override void SetWeights(IOrderRoutingActionResult actionResult) {
+
+            SetWeightsHelper(
+                actionResult
+                , ar => ar.OrderRoutingActionAllocationResults.Min(r => r.Order)
+                , ar => ar.OrderRoutingActionAllocationResults.Max(r => r.Order)
+                , ar => ar.Order
+                , false
+                );
+
         }
 
         public override bool Validate(out string[] messages) {

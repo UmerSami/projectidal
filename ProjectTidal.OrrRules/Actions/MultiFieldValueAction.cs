@@ -1,8 +1,8 @@
-﻿namespace ProjectTidal.OrrRules.Actions {
+﻿namespace ProjectTidal.OrrRules.Actions
+{
     using System;
     using System.Collections.Generic;
     using System.Linq;
-    using System.Text;
     using System.Text.RegularExpressions;
     using OrderDynamics.Core.BusinessFacade;
     using OrderDynamics.Core.BusinessLogic;
@@ -28,9 +28,9 @@
         /// <summary>
         /// Inventory location IDs member
         /// </summary>
-        [OrderRoutingActionUIHint(OrderRoutingActionUIHintType.InventoryLocations)]
+        [OrderRoutingActionUIHint(OrderRoutingActionUIHintType.InventoryLocationIds)]
         [OrderRoutingActionProperty]
-        [OrderRoutingActionUIName("Inventory Locations")]
+        [OrderRoutingActionUIName("Inventory Location Ids")]
         public string InventoryLocations {
             get; set;
         }
@@ -86,8 +86,8 @@
             set;
         }
 
-        public override IOrderRoutingActionResult Execute(OrderInfo orderInfo, OrderDetails orderDetails) {
-            var locations = _inventortyLocationsParser.ParseByName(InventoryLocations).ToArray();
+        protected override IOrderRoutingActionResult CreateActionResult(OrderInfo orderInfo, OrderDetails orderDetails) {
+            var locations = _inventortyLocationsParser.ParseById(InventoryLocations).ToArray();
 
             if (!locations.Any()) {
                 return new OrderRoutingActionResult {
@@ -132,8 +132,8 @@
                 double value1 = Convert.ToDouble(availableLocation.StateBag[key1]);
                 double value2 = Convert.ToDouble(availableLocation.StateBag[key2]);
 
-                double order1 = ((value1 - min1)/(max1 - min1));
-                double order2 = ((value2 - min2)/(max2 - min2));
+                double order1 = (value1 - min1)/(max1 - min1);
+                double order2 = (value2 - min2)/(max2 - min2);
 
                 if (Field1ValuePreference == ValuePreferenceType.High) {
                     order1 = 1 - order1;
@@ -147,12 +147,24 @@
 
                 actionResult.OrderRoutingActionAllocationResults.Add(new OrderRoutingActionAllocationResult {
                     LocationId = availableLocation.Id,
-                    Order = ((order1 * Field1Weight) + (order2 * Field2Weight)),
+                    Order = (order1 * Field1Weight) + (order2 * Field2Weight),
                     AvailableInventory = itemLocationInventory?.AvailableInventory ?? 0
                 });
             }
 
             return actionResult;
+        }
+
+        protected override void SetWeights(IOrderRoutingActionResult actionResult) {
+
+            SetWeightsHelper(
+                actionResult
+                , ar => ar.OrderRoutingActionAllocationResults.Min(r => r.Order)
+                , ar => ar.OrderRoutingActionAllocationResults.Max(r => r.Order)
+                , ar => ar.Order
+                , false
+                );
+
         }
 
         public override bool Validate(out string[] messages) {
